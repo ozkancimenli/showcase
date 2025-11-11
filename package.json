@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run build:storybook && next build",
-    "build:storybook": "cd .. && npm run build:storybook && node showcase/scripts/copy-storybook.js",
+    "build:storybook": "node scripts/build-storybook.js",
     "start": "next start",
     "lint": "eslint"
   },
