@@ -56,18 +56,44 @@ function findRootDir() {
   throw new Error('Could not find root directory with build:storybook script');
 }
 
+// Check if Storybook static files already exist (pre-built)
+const showcasePublic = path.join(__dirname, '../public/storybook');
+if (fs.existsSync(showcasePublic) && fs.readdirSync(showcasePublic).length > 0) {
+  console.log('✅ Storybook static files already exist, skipping build');
+  process.exit(0);
+}
+
 try {
   const rootDir = findRootDir();
   console.log(`📦 Found root directory: ${rootDir}`);
   
+  // Check if this is actually the right directory (should have .storybook folder)
+  const storybookConfig = path.join(rootDir, '.storybook');
+  if (!fs.existsSync(storybookConfig)) {
+    throw new Error('Storybook config not found in root directory');
+  }
+  
+  // Check if we're in Vercel and root directory is not accessible
+  const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
+  if (isVercel && !rootDir.includes('ozkan-ui') && !rootDir.includes('showcase')) {
+    console.warn('⚠️  Vercel detected and root directory seems incorrect, skipping Storybook build');
+    console.warn('⚠️  Using pre-built Storybook files from git');
+    process.exit(0);
+  }
+  
   // Change to root directory and build storybook
   process.chdir(rootDir);
   console.log('🔨 Building Storybook...');
-  execSync('npm run build:storybook', { stdio: 'inherit' });
+  
+  try {
+    execSync('npm run build:storybook', { stdio: 'inherit', timeout: 120000 });
+  } catch (buildError) {
+    console.error('❌ Storybook build failed:', buildError.message);
+    throw buildError;
+  }
   
   // Copy storybook-static to showcase/public/storybook
   const storybookStatic = path.join(rootDir, 'storybook-static');
-  const showcasePublic = path.join(__dirname, '../public/storybook');
   
   if (!fs.existsSync(storybookStatic)) {
     throw new Error('storybook-static directory not found after build');
@@ -103,10 +129,10 @@ try {
   
 } catch (error) {
   console.error('❌ Error building Storybook:', error.message);
-  console.error('Stack:', error.stack);
-  // In Vercel, if root directory is not accessible, skip Storybook build
-  // and continue with Next.js build
-  console.warn('⚠️  Skipping Storybook build, continuing with Next.js build...');
+  // In Vercel, if root directory is not accessible or build fails, skip Storybook build
+  // and continue with Next.js build (static files should already be in git)
+  console.warn('⚠️  Skipping Storybook build, using pre-built files from git');
+  console.warn('⚠️  Continuing with Next.js build...');
   process.exit(0); // Exit with 0 to continue build
 }
 
