@@ -4,9 +4,10 @@ import path from 'path';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path?: string[] } }
+  { params }: { params: Promise<{ path?: string[] }> }
 ) {
-  const filePath = params.path?.join('/') || 'index.html';
+  const { path: pathArray } = await params;
+  const filePath = pathArray?.join('/') || 'index.html';
   
   // Security: Prevent directory traversal
   if (filePath.includes('..')) {
